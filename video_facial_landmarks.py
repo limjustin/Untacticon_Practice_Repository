@@ -12,6 +12,8 @@ import time
 import dlib
 import cv2
 
+import numpy as np
+
  
 # initialize dlib's face detector (HOG-based) and then create
 # the facial landmark predictor
@@ -24,13 +26,31 @@ print("[INFO] camera sensor warming up...")
 vs = VideoStream(0).start()
 time.sleep(2.0)
 
+# cap = cv2.VideoCapture(0)
+# ret, frame = cap.read()
+# frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#
+# # Parameters for lucas kanade optical flow
+# lk_params = dict(winSize=(15, 15),
+#                  maxLevel=2,
+#                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+#
+# ##### New Function #####
+# # function to get coordinates
+# def get_coords(p1):
+#     try:
+#         return int(p1[0][0][0]), int(p1[0][0][1])
+#     except:
+#         return int(p1[0][0]), int(p1[0][1])
+
+
 # loop over the frames from the video stream
 while True:
-	# grab the frame from the threaded video stream, resize it to
+    # grab the frame from the threaded video stream, resize it to
 	# have a maximum width of 400 pixels, and convert it to
 	# grayscale
 	frame = vs.read()
-	frame = imutils.resize(frame, width=400)  # 얼굴 프레임 잡는 코드인듯
+	frame = imutils.resize(frame, width=400)  # 화면 크기 늘릴 수 있음
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 	# detect faces in the grayscale frame
@@ -48,11 +68,25 @@ while True:
 		cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
 		print(x, ",", y)
 
+		# x랑 y를 numpy 배열을 이용하여 만들어보기
+		face_center = x, y
+		p0 = np.array([[face_center]], np.float32)  # 먼저 움직이는 얼굴 중심 좌표
+		print("p0 is ", p0)
+
 		# loop over the (x, y)-coordinates for the facial landmarks
 		# and draw them on the image
 		#for (x, y) in shape:
 		#	print(x, ", ", y)
 		#	cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
+
+
+	# ret, frame_dot = cap.read()
+	# old_gray = frame_gray.copy()
+	# frame_gray = cv2.cvtColor(frame_dot, cv2.COLOR_BGR2GRAY)
+	# p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)  # 변화하는 p0 따라서 따라가는 좌표
+	# cv2.circle(frame_dot, get_coords(p1), 4, (0, 0, 255), -1)
+	# cv2.circle(frame_dot, get_coords(p0), 4, (255, 0, 0))
+
 	  
 	# show the frame
 	cv2.imshow("Frame", frame)
