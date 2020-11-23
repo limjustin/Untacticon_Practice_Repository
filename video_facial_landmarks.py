@@ -24,6 +24,9 @@ lk_params = dict(winSize=(15, 15),
                  maxLevel=2,
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 
+print(cv2.TERM_CRITERIA_EPS)
+print(cv2.TERM_CRITERIA_COUNT)
+
 cap = cv2.VideoCapture(0)
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 out = cv2.VideoWriter('./hello.avi', fourcc, 20.0, (1024, 768))  # 창 크기 조절
