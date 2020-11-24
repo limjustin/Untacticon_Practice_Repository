@@ -42,6 +42,8 @@ print("[INFO] loading facial landmark predictor...")
 detector = dlib.get_frontal_face_detector()  # 얼굴 영역 검출하는 부분
 predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")  # predictor 모델 가져오기 # 얼굴 안에서 눈코입 찾는 부분
 
+## 어디서 오래걸리는건지도 확인
+
 # initialize the video stream and allow the cammera sensor to warmup
 print("[INFO] camera sensor warming up...")
 # cap = cv2.VideoCapture(0)
@@ -61,10 +63,15 @@ stop_cnt = 0
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 # 전역 변수로 설정해서 for문에서 빼오기
-x = 0
-y = 0
+x_center = 0
+y_center = 0
 p0 = 0
 p1 = 0
+
+x_up = 0
+y_up = 0
+x_down = 0
+y_down = 0
 
 while True:
 
@@ -79,19 +86,39 @@ while True:
     for rect in rects:
         shape = predictor(frame_gray, rect)
         shape = face_utils.shape_to_np(shape)
-        x, y = shape[30]  # 34는 너무 콧구멍
+        x_center, y_center = shape[30]  # 34는 너무 콧구멍
+        x_up, y_up = shape[28]
+        x_down, y_down = shape[8]
+
+
 
     ## 찾은 좌표 사용하여 광학 흐름 측정하기
-    face_center = x, y  # 특정 부위 좌표 저장
-    p0 = np.array([[face_center]], np.float32)  # Numpy array로 형변환
-    p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)  # 광학 흐름 함수 사용하여 점 추적
-    cv2.circle(frame, get_coords(p0), 3, (0, 0, 255))  # 빨간색이 나한테 붙어있는 점
-    cv2.circle(frame, get_coords(p1), 3, (255, 0, 0), -1)  # 파란색이 따라다니는 점
+    face_up = x_up, y_up
+    p0_up = np.array([[face_up]], np.float32)
+    face_center = x_center, y_center  # 특정 부위 좌표 저장
+    p0_center = np.array([[face_center]], np.float32)  # Numpy array로 형변환
+    face_down = x_down, y_down
+    p0_down = np.array([[face_down]], np.float32)
+
+    p1_up, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0_up, None, **lk_params)  # 광학 흐름 함수 사용하여 점 추적
+    p1_center, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0_center, None, **lk_params)  # 광학 흐름 함수 사용하여 점 추적
+    p1_down,st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0_down, None, **lk_params)  # 광학 흐름 함수 사용하여 점 추적
+
+    cv2.circle(frame, get_coords(p0_up), 3, (0, 255, 0))
+    cv2.circle(frame, get_coords(p1_up), 3, (255, 0, 0), -1)  # 파란색이 따라다니는 점
+    cv2.circle(frame, get_coords(p0_center), 3, (0, 0, 255))  # 빨간색이 나한테 붙어있는 점
+    cv2.circle(frame, get_coords(p1_center), 3, (255, 0, 0), -1)  # 파란색이 따라다니는 점
+    cv2.circle(frame, get_coords(p0_down), 3, (0, 255, 0))
+    cv2.circle(frame, get_coords(p1_down), 3, (255, 0, 0), -1)  # 파란색이 따라다니는 점
+
 
     ## 정수로 좌표화
-    a, b = get_coords(p0), get_coords(p1)
-    print("p0 is ", p0)
-    print("p1 is ", p1)
+    a_up, b_up = get_coords(p0_up), get_coords(p1_up)
+    a_down, b_down = get_coords(p0_down), get_coords(p1_down)
+
+    a, b = get_coords(p0_center), get_coords(p1_center)
+    print("p0_center is ", p0_center)
+    print("p1_center is ", p1_center)
     print("a is ", a)
     print("b is ", b)
 
@@ -110,6 +137,16 @@ while True:
     text = 'y_movement: ' + str(y_movement)
     if not gesture: cv2.putText(frame, text, (50, 100), font, 0.8, (0, 0, 255), 2)  # y_movement 글씨 표시
 
+    if abs(a_up[0] - a_down[0]) > 0 and abs(b_up[0] - b_down[0]) :
+        a_cot = abs(a_up[1] - a_down[1]) / abs(a_up[0] - a_down[0])
+        b_cot = abs(b_up[1] - b_down[1]) / abs(b_up[0] - b_down[0])
+        print("cot is ", a_cot)
+        print("cot is ", b_cot)
+
+        print(" >>>> Two cot size is ", b_cot / a_cot)
+
+        if b_cot / a_cot > 2:
+            gesture = 'Question'
 
     ## gesture 임계값을 넘기면 긍정 및 부정 인식식
     # 도리도리는 150 / 끄덕끄덕은 30 정도 움직임
