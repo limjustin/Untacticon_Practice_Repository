@@ -61,7 +61,7 @@ while not face_found:
     cv2.waitKey(1)
 
 face_center = x + w / 2, y + h / 3
-p0 = np.array([[face_center]], np.float32) # 먼저 움직이는 얼굴 중심 좌표
+p0 = np.array([[face_center]], np.float32) # 먼저 움직이는 얼굴 중심 좌표 (여기서 가장 처음 점을 초기화시켜주잖아)
 
 gesture = False
 x_movement = 0
@@ -136,7 +136,7 @@ while True:
         stop_cnt = 0
 
     # print distance(get_coords(p0), get_coords(p1))
-    p0 = p1
+    p0 = p1  # 이렇게 점을 옮기는 구나...
 
     cv2.imshow('image', frame)
     out.write(frame)
