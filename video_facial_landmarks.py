@@ -35,6 +35,12 @@ def get_coords(p1):
     except:
         return int(p1[0][0]), int(p1[0][1])
 
+def maximum(n1, n2):
+    if(n1 > n2):
+        return n1
+    else:
+        return n2
+
 
 # initialize dlib's face detector (HOG-based) and then create
 # the facial landmark predictor
@@ -52,7 +58,7 @@ time.sleep(2.0)
 # define movement threshodls
 max_head_movement = 20
 movement_threshold = 50
-gesture_threshold = 175
+gesture_threshold = 100
 
 gesture = False
 x_movement = 0
@@ -73,6 +79,14 @@ y_up = 0
 x_down = 0
 y_down = 0
 
+a_cot = 0
+b_cot = 0
+
+gradient_a = 1
+gradient_b = 1
+
+keep_cnt = 0
+
 while True:
 
     ## 얼굴 인식
@@ -89,8 +103,6 @@ while True:
         x_center, y_center = shape[30]  # 34는 너무 콧구멍
         x_up, y_up = shape[28]
         x_down, y_down = shape[8]
-
-
 
     ## 찾은 좌표 사용하여 광학 흐름 측정하기
     face_up = x_up, y_up
@@ -123,9 +135,11 @@ while True:
     print("b is ", b)
 
     ## 움직임 최소화하기
-    if abs(a[0] - b[0]) > 5 or abs(a[1] - b[1]) > 5:  # 이것에 대한 임계값은 해보면서 계속 찾아보기
+    if abs(a[0] - b[0]) > 5 or abs(a[1] - b[1]) > 5 and x_movement > 0 and y_movement > 0:  # 이것에 대한 임계값은 해보면서 계속 찾아보기
         x_movement += abs(a[0] - b[0])
         y_movement += abs(a[1] - b[1])
+        gradient_a += (x_movement / y_movement) + 1
+        gradient_b += (y_movement / x_movement) + 1
 
     print("x_movement is ", x_movement)
     print("y_movement is ", y_movement)
@@ -137,27 +151,48 @@ while True:
     text = 'y_movement: ' + str(y_movement)
     if not gesture: cv2.putText(frame, text, (50, 100), font, 0.8, (0, 0, 255), 2)  # y_movement 글씨 표시
 
-    if abs(a_up[0] - a_down[0]) > 0 and abs(b_up[0] - b_down[0]) :
-        a_cot = abs(a_up[1] - a_down[1]) / abs(a_up[0] - a_down[0])
-        b_cot = abs(b_up[1] - b_down[1]) / abs(b_up[0] - b_down[0])
-        print("cot is ", a_cot)
-        print("cot is ", b_cot)
 
-        print(" >>>> Two cot size is ", b_cot / a_cot)
+    if x_movement > gesture_threshold or y_movement > gesture_threshold :
+        if x_movement > gesture_threshold and keep_cnt <= 0:
+            print(">>> Gesture is No, x_movement is ", x_movement)
+            gesture = 'No'
+            keep_cnt = 20
 
-        if b_cot / a_cot > 2:
-            gesture = 'Question'
+        if y_movement > gesture_threshold and keep_cnt <= 0:
+            print(">>> Gesture is Yes, y movement is ", y_movement)
+            gesture = 'Yes'
+            keep_cnt = 20
 
+        print("abs(a_cot - b_cot) is ", abs(a_cot - b_cot))
+
+    else :
+        if abs(a_up[0] - a_down[0]) >= 1 and abs(b_up[0] - b_down[0]) >= 1:
+            a_cot = abs(a_up[0] - a_down[0]) / abs(a_up[1] - a_down[1]) * 100
+            b_cot = abs(b_up[0] - b_down[0]) / abs(b_up[1] - b_down[1]) * 100
+            print("cot is ", a_cot)
+            print("cot is ", b_cot)
+
+            print(" >>>> Two cot size is ", abs(a_cot - b_cot))
+            print("abs(a_cot - b_cot) is ", abs(a_cot - b_cot))
+            print("maximum(gradient_a/gradient_b, gradient_b/gradient_a) is ", maximum(gradient_a/gradient_b, gradient_b/gradient_a))
+
+            if abs(a_cot - b_cot) > 10 and abs(a_cot - b_cot) < 20 and maximum(gradient_a/gradient_b, gradient_b/gradient_a) < 8 and keep_cnt <= 0:  # 얘가 아무때나 안 나오도록 제한 조건을 걸어주는 것도 나쁘지 않음
+                print(">>> Gesture is Doubt")
+                gesture = 'Doubt'
+                keep_cnt = 10
+
+
+    text = 'gradient_a: ' + str(gradient_a)
+    if not gesture: cv2.putText(frame, text, (50, 150), font, 0.8, (255, 0, 0), 2)
+    text = 'gradient_b: ' + str(gradient_b)
+    if not gesture: cv2.putText(frame, text, (50, 200), font, 0.8, (255, 0, 0), 2)
+    text = 'Doubt: ' + str(abs(a_cot - b_cot))
+    if not gesture: cv2.putText(frame, text, (50, 250), font, 0.8, (255, 0, 0), 2)
     ## gesture 임계값을 넘기면 긍정 및 부정 인식식
     # 도리도리는 150 / 끄덕끄덕은 30 정도 움직임
     # 원래는 gesture_threshold 값을 가짐
     # 반응이 아니어도 움직임이 허용되는 선의 범위 안에서 gesture_threshold를 정해야 함
-    if x_movement > gesture_threshold:
-        print(">>> Gesture is No, x_movement is ", x_movement)
-        gesture = 'No'
-    if y_movement > gesture_threshold:
-        print(">>> Gesture is Yes, y movement is ", y_movement)
-        gesture = 'Yes'
+
 
     # 의문 상황은 대각선으로 움직이는 것을 포착하면 되는데
     # 이 상황이 위에 상황과 겹쳐지면 어떻게 해야 하나를 지금 생각 중
@@ -172,19 +207,24 @@ while True:
     ## 0까지 갔을 때는 다시 특정 임계값으로 올린 다음에 다시 시작
     if gesture_show == 0:
         gesture = False
-        x_movement = 0
-        y_movement = 0  # 움직임이 없으면 0으로 초기화시키네
+        x_movement = 1
+        y_movement = 1  # 움직임이 없으면 0으로 초기화시키네
+        gradient_a = 1
+        gradient_b = 1
         gesture_show = 20  # number of frames a gesture is shown
 
     ##### 고개가 자연스럽게 움직일 수 있는 부분에서 허용되는 범위 #####
     # 자연스럽게 고개가 움직이는 부분은 어떻게 할 것이냐
     # 근데 이 count가 Gesture를 파악하는데 걸림돌이 되면 안된다
     if stop_cnt > 30:  # 30 정도면 되는 것이냐
-        x_movement = 0
-        y_movement = 0
+        x_movement = 1
+        y_movement = 1
+        gradient_a = 1
+        gradient_b = 1
         stop_cnt = 0
 
     stop_cnt += 1
+    keep_cnt = keep_cnt - 1
 
     out.write(frame)
     cv2.waitKey(1)
